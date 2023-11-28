@@ -44,6 +44,17 @@ export class Crypto implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
+		credentials: [
+			{
+				name: 'crypto',
+				required: false,
+				displayOptions: {
+					show: {
+						action: ['hmac', 'sign'],
+					},
+				},
+			},
+		],
 		properties: [
 			{
 				displayName: 'Action',
@@ -267,19 +278,6 @@ export class Crypto implements INodeType {
 				description: 'Name of the property to which to write the hmac',
 			},
 			{
-				displayName: 'Secret',
-				name: 'secret',
-				displayOptions: {
-					show: {
-						action: ['hmac'],
-					},
-				},
-				type: 'string',
-				typeOptions: { password: true },
-				default: '',
-				required: true,
-			},
-			{
 				displayName: 'Encoding',
 				name: 'encoding',
 				displayOptions: {
@@ -362,19 +360,6 @@ export class Crypto implements INodeType {
 					},
 				],
 				default: 'hex',
-				required: true,
-			},
-			{
-				displayName: 'Private Key',
-				name: 'privateKey',
-				displayOptions: {
-					show: {
-						action: ['sign'],
-					},
-				},
-				type: 'string',
-				description: 'Private key to use when signing the string',
-				default: '',
 				required: true,
 			},
 			{
@@ -478,7 +463,7 @@ export class Crypto implements INodeType {
 					const hashOrHmac =
 						action === 'hash'
 							? createHash(type)
-							: createHmac(type, this.getNodeParameter('secret', i) as string);
+							: createHmac(type, (await this.getCredentials('crypto', i)).secret as string);
 					if (this.getNodeParameter('binaryData', i)) {
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
@@ -501,11 +486,11 @@ export class Crypto implements INodeType {
 				if (action === 'sign') {
 					const algorithm = this.getNodeParameter('algorithm', i) as string;
 					const encoding = this.getNodeParameter('encoding', i) as BinaryToTextEncoding;
-					const privateKey = this.getNodeParameter('privateKey', i) as string;
+					const credentials = await this.getCredentials('crypto', i);
 					const sign = createSign(algorithm);
 					sign.write(value);
 					sign.end();
-					newValue = sign.sign(privateKey, encoding);
+					newValue = sign.sign(credentials.privateKey as string, encoding);
 				}
 
 				let newItem: INodeExecutionData;
